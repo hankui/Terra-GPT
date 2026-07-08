@@ -35,12 +35,12 @@ def find_file(date_str, tile_id, HLS_1year_files):
     return l8_path, s2_path
 
 
-## get file names one year BEFORE the date time_str
+## get file names one year After the date time_str
 def get_files_1year(tile, time_str, file_list):
     # Convert the provided day_of_year (format: yyyyddd) to a datetime object
 
     defined_date = datetime.strptime(time_str, "%Y%j")
-    end_date = defined_date + timedelta(days=365)  # One year before
+    end_date = defined_date + timedelta(days=365)  # One year After
 
     # Build a regex to extract the date from filenames matching the given tile.
     # e.g., for tile T15TUE, a file name may contain "HLS.S30.T15TUE.2023244T170859..."
@@ -64,6 +64,39 @@ def get_files_1year(tile, time_str, file_list):
 
     selected_files.sort()
     return selected_files, len(selected_files)
+
+
+## get file names Between start date and end date
+def get_files_start_end(tile, start_date, end_date, file_list):
+    # Convert the provided day_of_year (format: yyyyddd) to a datetime object
+
+    defined_date = datetime.strptime(start_date, "%Y%j")
+    end_date = datetime.strptime(end_date, "%Y%j")
+
+    # Build a regex to extract the date from filenames matching the given tile.
+    # e.g., for tile T15TUE, a file name may contain "HLS.S30.T15TUE.2023244T170859..."
+    pattern = re.compile(r"HLS\.[SL]30\." + re.escape(tile) + r"\.(\d{7})T\d{6}")
+
+    selected_files = []
+    seen_basenames = set()
+
+    for fname in file_list:
+        if tile in fname:
+            m = pattern.search(fname)
+            if m:
+                # print
+                file_date_str = m.group(1)  # e.g., "2023244"
+                file_date = datetime.strptime(file_date_str, "%Y%j")
+                if defined_date <= file_date < end_date:
+                    base_name = os.path.basename(fname)
+                    if base_name not in seen_basenames:
+                        seen_basenames.add(base_name)
+                        selected_files.append(fname)
+
+    selected_files.sort()
+    return selected_files, len(selected_files)
+
+
 
 def days_in_year(year):
     return 366 if calendar.isleap(year) else 365
@@ -109,7 +142,7 @@ def fill_nodata_nearest_per_band(arr, nodata=-9999.0):
         # distance_transform_edt: 对“mask为True的位置”返回到最近False的位置的索引
         # 这里我们需要的是：mask True 为需要填充；False 为有效值
         _, (iy, ix) = distance_transform_edt(mask, return_indices=True)
-
+        # 把每个无效像素替换成它最近的有效像素值
         band[mask] = band[iy[mask], ix[mask]]
         out[c] = band
 
@@ -150,4 +183,78 @@ def mask_obs_after_crop_damage(testxi, firstDate, periods, N_after=9999):
         test_output[i, periods + current_index:, 1:] = FILL
 
     return test_output
+
+
+from datetime import datetime
+def parse_year_doy(date_str, name="date"):
+    """
+    Parse date string in YEAR+DOY format, e.g., 2023041.
+    """
+    if not isinstance(date_str, str):
+        raise ValueError(f"{name} must be a string, got {type(date_str).__name__}.")
+
+    if len(date_str) != 7 or not date_str.isdigit():
+        raise ValueError(
+            f"{name} must be in YEAR+DOY format with 7 digits, e.g., 2023041."
+        )
+
+    year = int(date_str[:4])
+    doy = int(date_str[4:])
+
+    if doy < 1 or doy > 366:
+        raise ValueError(
+            f"{name} has invalid DOY: {doy}. DOY must be between 001 and 366."
+        )
+
+    try:
+        date = datetime.strptime(date_str, "%Y%j").date()
+    except ValueError:
+        raise ValueError(
+            f"{name} is not a valid YEAR+DOY date: {date_str}. "
+            f"Please check whether the year is a leap year."
+        )
+
+    if date.year != year:
+        raise ValueError(
+            f"{name} is not a valid YEAR+DOY date: {date_str}."
+        )
+
+    return date
+
+
+def validate_date_range(start_date, end_date, max_days=366):
+    """
+    Validate date range in [start_date, end_date) format.
+
+    Parameters
+    ----------
+    start_date : str
+        Start date in YEAR+DOY format, e.g., 2023041. Included.
+    end_date : str
+        End date in YEAR+DOY format, e.g., 2024041. Excluded.
+    max_days : int
+        Maximum allowed number of days in the interval [start_date, end_date).
+
+    Returns
+    -------
+    start_dt, end_dt, n_days
+    """
+    start_dt = parse_year_doy(start_date, name="start_date")
+    end_dt = parse_year_doy(end_date, name="end_date")
+
+    n_days = (end_dt - start_dt).days
+
+    if n_days <= 0:
+        raise ValueError(
+            f"end_date must be later than start_date for a [start_date, end_date) interval. "
+            f"Got start_date={start_date}, end_date={end_date}."
+        )
+
+    if n_days > max_days:
+        raise ValueError(
+            f"The date interval [start_date, end_date) must not exceed {max_days} days. "
+            f"Got {n_days} days from {start_date} to {end_date}."
+        )
+
+    return start_dt, end_dt, n_days
 

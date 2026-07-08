@@ -28,16 +28,15 @@ elif TASK=="CROP_MAPPING":
     n_out = 13
 elif TASK=="CROP_DAMAGE":
     n_out = 1
-    from config import EVENT_DATE, N_AFTER
 else:
     raise ValueError(f"{TASK} not defined")
 
 # process the entire image chunk by chunk 
 # reconstructed_dates = '2023195,2023220'.split(',')
 # is_evaluation=False; dem_dir=DEM_DIR
-def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATCH_SIZE, start_date, mean_std_dict, reconstructed_dates="", is_evaluation=False, dem_dir=None):
-    
-    HLS_1year_files, total_n = utilities.get_files_1year("T" + tile_id, str(start_date), file_list=HLS_LIST)
+def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATCH_SIZE, start_date, end_date, mean_std_dict, reconstructed_dates="", is_evaluation=False, dem_dir=None):
+    # HLS_1year_files, total_n = utilities.get_files_1year("T" + tile_id, str(start_date), file_list=HLS_LIST)
+    HLS_1year_files, total_n = utilities.get_files_start_end("T" + tile_id, str(start_date), str(end_date), file_list=HLS_LIST)
     # mean and std
     l30_mean = mean_std_dict['l30_mean']
     l30_std = mean_std_dict['l30_std']
@@ -49,6 +48,7 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
     print (files_dates)
     unique_dates = list(set(files_dates))
     not_includes_dates = [x for x in reconstructed_dates if x not in unique_dates]
+
     all_dates = sorted(unique_dates + not_includes_dates)
     ## derive output holder 
     if reconstructed_dates=="" and TASK=="SOIL_MOISTURE": # derive for all the soil moisture dates 
@@ -98,31 +98,26 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
             
             N, T, B = valid_patches.shape # T = periods+periods
             STEP = int(1e5)
-            if N < STEP:
-                predictions = model_hls.predict(valid_patches, verbose=2, batch_size=BATCH_SIZE)  # N_valid * 352 * 11, crop mapping is N*13
+            if TASK=="GAP_FILL":
+                predictions = np.full(shape=(N, T, n_out), fill_value=FILL, dtype=np.float32)
+            elif TASK=="SOIL_MOISTURE":
+                predictions = np.full(shape=(N, T//2, n_out), fill_value=FILL, dtype=np.float32)
+            elif TASK=="FUEL_MOISTURE":
+                predictions = np.full(shape=(N, T//2, n_out), fill_value=FILL, dtype=np.float32)
+            elif TASK=="CROP_MAPPING":
+                predictions = np.full(shape=(N, n_out), fill_value=FILL, dtype=np.float32)
+            elif TASK=="CROP_DAMAGE":
+                predictions = np.full(shape=(N, T//2, n_out), fill_value=FILL, dtype=np.float32)
             else:
-                if TASK=="GAP_FILL":
-                    predictions = np.full(shape=(N, T, n_out), fill_value=FILL, dtype=np.float32)
-                elif TASK=="SOIL_MOISTURE":
-                    predictions = np.full(shape=(N, T//2, n_out), fill_value=FILL, dtype=np.float32)
-                elif TASK=="FUEL_MOISTURE":
-                    predictions = np.full(shape=(N, T//2, n_out), fill_value=FILL, dtype=np.float32)
-                elif TASK=="CROP_MAPPING":
-                    predictions = np.full(shape=(N, n_out), fill_value=FILL, dtype=np.float32)
-                elif TASK=="CROP_DAMAGE":
-                    predictions = np.full(shape=(N, T//2, n_out), fill_value=FILL, dtype=np.float32)
-                    if EVENT_DATE is not None:
-                        valid_patches = utilities.mask_obs_after_crop_damage(valid_patches, EVENT_DATE, periods, N_AFTER)
-                else:
-                    raise ValueError(f"{TASK} not defined")
+                raise ValueError(f"{TASK} not defined")
                 
-                for i in range(0, N, STEP):
-                    start = i
-                    end = min(i + STEP, N)
-                    print('subsquence {} to {}'.format(start, end))
-                    tempx = valid_patches[start:end]
-                    tempy = model_hls.predict(tempx, batch_size=BATCH_SIZE, verbose=2)
-                    predictions[start:end] = tempy
+            for i in range(0, N, STEP):
+                start = i
+                end = min(i + STEP, N)
+                print('subsequence {} to {}'.format(start, end))
+                tempx = valid_patches[start:end]
+                tempy = model_hls.predict(tempx, batch_size=BATCH_SIZE, verbose=0)
+                predictions[start:end] = tempy
             
             ## *******************************************************************************
             ## wrap up the predicted values 
@@ -147,7 +142,7 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
                 result_sentinel[valid_indices,:,-1    ] = extract_by_doy_optimized(sentinel_obs[:, :, 0], sentinel_missing[:,:,np.newaxis], predict_doys)[:,:,0]
                 
                 # Reshape to patch size and fit in the image
-                output_landsat [row_start:row_end, col_start:col_end, :, :] = result_landsat .reshape(height, width, len(predict_doys), n_out+1)
+                output_landsat [row_start:row_end, col_start:col_end, :, :] = result_landsat.reshape(height, width, len(predict_doys), n_out+1)
                 output_sentinel[row_start:row_end, col_start:col_end, :, :] = result_sentinel.reshape(height, width, len(predict_doys), n_out+1)
             elif TASK=="SOIL_MOISTURE": ## derive on the observed 
                 both_missing = np.logical_and(landsat_missing,sentinel_missing) 
@@ -157,7 +152,7 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
                 result_landsat [valid_indices,:,-1 ] = both_missing
                 doy_index = np.isin(all_dates, used_dates)
                 # Reshape to patch size and fit in the image
-                output_landsat [row_start:row_end, col_start:col_end, doy_index, :] = result_landsat .reshape(height, width, periods, n_out+1)
+                output_landsat [row_start:row_end, col_start:col_end, doy_index, :] = result_landsat.reshape(height, width, periods, n_out+1)
                 output_sentinel = output_landsat
                 
             elif TASK=="FUEL_MOISTURE": ## derive for reconstruction dates only 
@@ -169,7 +164,7 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
                 result_landsat [valid_indices,:,-1    ] = extract_by_doy_optimized(landsat_obs [:, :, 0], both_missing [:,:,np.newaxis], predict_doys)[:,:,0]
                 
                 # Reshape to patch size and fit in the image
-                output_landsat [row_start:row_end, col_start:col_end, :, :] = result_landsat .reshape(height, width, len(predict_doys), n_out+1)
+                output_landsat [row_start:row_end, col_start:col_end, :, :] = result_landsat.reshape(height, width, len(predict_doys), n_out+1)
                 output_sentinel = output_landsat
 
             elif TASK=="CROP_MAPPING": # output one map
@@ -232,8 +227,6 @@ def search_doy(target_doy, doy_list):
             # result[:, m, :] = data[:, idx, 1:]
     # return result
 
-# doy_sequence, data, target_doys = landsat_obs [0, :, 0], landsat_obs [0, :, 1:], predict_doys
-# def extract_doy_index (doy_sequence, target_doys):
 
 # doy_sequence, data, target_doys = landsat_obs [0, :, 0], landsat_obs [0, :, 1:], predict_doys
 def extract_by_doy_optimized(doy_sequence, data, target_doys):
@@ -328,6 +321,11 @@ def process_patch_yearly(tile_id, HLS_1year_files, row_top, col_left, width, hei
             delete_time_index.extend([i, i + periods])
         else: 
             used_dates.append (date_str)
+
+    # check doy values
+    doys = patch_data[:, :, :, 0]
+    if np.any((doys < 0) | (doys > 2)):
+        raise ValueError("something is wrong with doy normalization, check your input")
     
     if len(delete_time_index) > 0:
         del_idx = np.unique(np.asarray(delete_time_index, dtype=int))

@@ -28,6 +28,8 @@ The input band configurations are defined as follows:
 - THERMAL: This configuration uses the L30 thermal bands but does not use auxiliary topographic variables, including DEM, slope, and aspect.
 - THERMAL_DEM: This configuration uses both the L30 thermal bands and auxiliary topographic variables, including DEM, slope, and aspect.
 
+For crop damage, the model was fine-tuned using growing season time series from Mar 1st to any date in growing season up to Oct 1st. 
+
 ## Requirements
 - **Programming Languages**: Python 3.7+
 - **Libraries**:
@@ -70,9 +72,11 @@ The pathes for the pretrained Transformer models for different masks are hardcod
  - **Time series refletance reconstruction**  
 	A time series of GeoTIFF files on both the original HLS observation dates and the reconstruction dates. Each output includes Landsat 7-band and Sentinel-2 11-band reflectance data, with one additional band indicating whether the pixel has a cloud-free observation. 
  - **LFMC**  
-	A time series of two-band GeoTIFF files on both the original HLS observation dates and the reconstruction dates. The first band contains live fuel moisture content (LFMC), and the second band indicates whether the pixel has a cloud-free observation. 
+	A time series of three-band GeoTIFF files on both the original HLS observation dates and the reconstruction dates. The first band contains live fuel moisture content (LFMC), 
+	the second band indicate the retreival uncertaity derived using the Gaussian Negative Log-Likelihood (NLL) loss, and the third band indicates whether the pixel has a cloud-free observation. 
  - **Soil moisture**  
-	A time series of two-band GeoTIFF files on the original HLS observation dates. The first band contains soil moisture, and the second band indicates whether the pixel has a cloud-free observation. 
+	A time series of three-band GeoTIFF files on the original HLS observation dates. The first band contains soil moisture, 
+	the second band indicate the retreival uncertaity derived using the Gaussian Negative Log-Likelihood (NLL) loss, and the third band indicates whether the pixel has a cloud-free observation. 
  - **Crop mapping**  
 	A single-band GeoTIFF image indicating the crop type. The legend follows the IBM–NASA multi-temporal crop classification dataset: https://huggingface.co/datasets/ibm-nasa-geospatial/multi-temporal-crop-classification. 
  - **Crop damage**  

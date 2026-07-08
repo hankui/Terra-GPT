@@ -1,11 +1,7 @@
 # config
-TASK = "GAP_FILL"
-TASK = "FUEL_MOISTURE"
-TASK = "SOIL_MOISTURE"
-TASK = "CROP_MAPPING" 
-# TASK = "CROP_DAMAGE",
 
-INPUT_BANDS = "THERMAL_DEM"
+TASK = "CROP_MAPPING" # options: "GAP_FILL", "SOIL_MOISTURE", "FUEL_MOISTURE", "CROP_MAPPING", "CROP_DAMAGE"
+INPUT_BANDS = "THERMAL_DEM" # options: "DEFAULT", "THERMAL", "THERMAL_DEM"
 
 # ========================= TASK and Input bands config =================================
 
@@ -29,8 +25,6 @@ TASK_CONFIGS = {
     "CROP_DAMAGE": {
         "Y_SCALE": 1,
         "Y_OFFSET": 0,
-        "EVENT_DATE": None, # crop damage event date, use this date and n_after to mask observations, datatype: str, e.g. "2018-07-01"
-        "N_AFTER": None, # int
     }
 }
 
@@ -59,9 +53,7 @@ task_cfg = TASK_CONFIGS[TASK]
 input_cfg = INPUT_BAND_CONFIGS[INPUT_BANDS]
 Y_SCALE = task_cfg["Y_SCALE"]
 Y_OFFSET = task_cfg["Y_OFFSET"]
-# crop damage
-EVENT_DATE = None
-N_AFTER=None
+
 
 L8_bands_n = input_cfg["L8_bands_n"]
 S2_bands_n = input_cfg["S2_bands_n"]
@@ -72,7 +64,7 @@ MODEL_PATHS = {
     #### model path dict: (TASK, INPUT_BANDS): Model path ####
     ("GAP_FILL", "DEFAULT"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH1024.LR0.0005.EPOCH40.L20.1.GAPS0.5.v7_32.h5",
     ("GAP_FILL", "THERMAL"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH1024.LR0.0005.EPOCH40.L20.1.GAPS0.5.v7_33.h5",
-    ("GAP_FILL", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH256.LR0.0001.EPOCH40.L20.1.GAPS0.5use_bt_dem.v7_35",
+    ("GAP_FILL", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH256.LR0.0001.EPOCH40.L20.1.GAPS0.5use_bt_dem.v7_35.h5",
     ("FUEL_MOISTURE", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/MC_v6_4.SMmodel.B0004.r0.00001.e10.L0.10000.i5.h5",
     ("SOIL_MOISTURE", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/v4_5.SMmodel.B0256.r0.00001.e30.L0.10000.U064.i4.h5",
     ("CROP_MAPPING", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/v3_9.layer4.METHOD2.BATCH128.LR0.0001.EPOCH20.L20.1.FT1.use_bt_dem.i0.model.h5",
@@ -88,8 +80,6 @@ MAX_SENTINEL2 = 176
 if TASK == "CROP_DAMAGE":
     MAX_LANDSAT = 68
     MAX_SENTINEL2 = 68
-    EVENT_DATE = task_cfg["EVENT_DATE"]
-    N_AFTER = task_cfg["N_AFTER"]
 
 FILL = -9999.
 BANDS_N = 12      # default output bands for GAP_FILL
