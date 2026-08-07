@@ -1,6 +1,6 @@
 # config
 
-TASK = "CROP_MAPPING" # options: "GAP_FILL", "SOIL_MOISTURE", "FUEL_MOISTURE", "CROP_MAPPING", "CROP_DAMAGE"
+TASK = "GAP_FILL" # options: "GAP_FILL", "SOIL_MOISTURE", "FUEL_MOISTURE", "CROP_MAPPING", "CROP_DAMAGE"
 INPUT_BANDS = "THERMAL_DEM" # options: "DEFAULT", "THERMAL", "THERMAL_DEM"
 
 # ========================= TASK and Input bands config =================================
@@ -62,13 +62,13 @@ S2_model_bands_N = input_cfg["S2_model_bands_N"]
 
 MODEL_PATHS = {
     #### model path dict: (TASK, INPUT_BANDS): Model path ####
-    ("GAP_FILL", "DEFAULT"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH1024.LR0.0005.EPOCH40.L20.1.GAPS0.5.v7_32.h5",
-    ("GAP_FILL", "THERMAL"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH1024.LR0.0005.EPOCH40.L20.1.GAPS0.5.v7_33.h5",
-    ("GAP_FILL", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/best_model_hls2026.layer4.METHOD2.BATCH256.LR0.0001.EPOCH40.L20.1.GAPS0.5use_bt_dem.v7_35.h5",
-    ("FUEL_MOISTURE", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/MC_v6_4.SMmodel.B0004.r0.00001.e10.L0.10000.i5.h5",
-    ("SOIL_MOISTURE", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/v4_5.SMmodel.B0256.r0.00001.e30.L0.10000.U064.i4.h5",
-    ("CROP_MAPPING", "THERMAL_DEM"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/v3_9.layer4.METHOD2.BATCH128.LR0.0001.EPOCH20.L20.1.FT1.use_bt_dem.i0.model.h5",
-    ("CROP_DAMAGE", "THERMAL"): "/mmfs1/scratch/jacks.local/junjie.li/Foundation model/Model weights/v5_0.layer4.METHOD2.BATCH2048.LR1e-06.EPOCH30.L20.1.FT1.i0.model 1.h5"
+    ("GAP_FILL", "DEFAULT"): r"C:\LJJ\foundation model\Model weights\best_model_hls2026.layer4.METHOD2.BATCH1024.LR0.0005.EPOCH40.L20.1.GAPS0.5.v7_32.h5",
+    ("GAP_FILL", "THERMAL"): r"C:\LJJ\foundation model\Model weights/best_model_hls2026.layer4.METHOD2.BATCH1024.LR0.0005.EPOCH40.L20.1.GAPS0.5.v7_33.h5",
+    ("GAP_FILL", "THERMAL_DEM"): r"C:\LJJ\foundation model\Model weights/best_model_hls2026.layer4.METHOD2.BATCH256.LR0.0001.EPOCH40.L20.1.GAPS0.5use_bt_dem.v7_35.h5",
+    ("FUEL_MOISTURE", "THERMAL_DEM"): r"C:\LJJ\foundation model\Model weights/MC_v6_4.SMmodel.B0004.r0.00001.e10.L0.10000.i5.h5",
+    ("SOIL_MOISTURE", "THERMAL_DEM"): r"C:\LJJ\foundation model\Model weights/v4_5.SMmodel.B0256.r0.00001.e30.L0.10000.U064.i4.h5",
+    ("CROP_MAPPING", "THERMAL_DEM"): r"C:\LJJ\foundation model\Model weights/v3_9.layer4.METHOD2.BATCH128.LR0.0001.EPOCH20.L20.1.FT1.use_bt_dem.i0.model.h5",
+    ("CROP_DAMAGE", "THERMAL"): r"C:\LJJ\foundation model\Model weights/v5_0.layer4.METHOD2.BATCH2048.LR1e-06.EPOCH30.L20.1.FT1.i0.model 1.h5"
 }
 
 hls_transformer_model_path = MODEL_PATHS.get((TASK, INPUT_BANDS))

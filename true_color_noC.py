@@ -1,4 +1,5 @@
-# true colour display 
+# modified on 8/4/2026, fix bug
+# true colour display
 # Hankui Jul 11 2020 
 # import true_color_noC
 
@@ -11,7 +12,8 @@ import rasterio
 
 ## ************************************************************************
 ## convert from tif to ENVI
-stretch_cmd = os.getenv("HOME")+"/mycode/v3.0.classification/stretch/truecolor.log.asTIFF"
+# stretch_cmd = os.getenv("HOME")+"/mycode/v3.0.classification/stretch/truecolor.log.asTIFF"  # bug on windows
+stretch_cmd = os.path.expanduser("~/mycode/v3.0.classification/stretch/truecolor.log.asTIFF")
 
 WORK_DIR = "./"
 if not os.path.exists('./tmp'):

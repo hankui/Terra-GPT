@@ -65,6 +65,10 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
         output_landsat  = np.full((IMG_HEIGHT, IMG_WIDTH, len(reconstructed_dates), n_out+1), FILL, dtype=np.float32)
         output_sentinel = np.full((IMG_HEIGHT, IMG_WIDTH, len(reconstructed_dates), n_out+1), FILL, dtype=np.float32)
     
+    if output_landsat.ndim == 4: # SOIL_MOISTURE, GAP_FILL, FUEL_MOISTURE, init valid-observation indicator
+        output_landsat[:, :, :, -1] = 0
+        output_sentinel[:, :, :, -1] = 0
+    
     min_year = int(all_dates[0][:4])
     row_start = 0; col_start = 0
     for row_start in range(0, IMG_HEIGHT, CHUNK_SIZE):
@@ -123,7 +127,7 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
             ## wrap up the predicted values 
             landsat_obs  = patch_data_reshaped[valid_indices, :periods, :]  # shape: (N_valid, 176, 12)
             sentinel_obs = patch_data_reshaped[valid_indices, periods:, :]  # shape: (N_valid, 176, 12)
-            ## missing indicator: 1 is missing (no observation) and 0 is not missing (with observation) and -9999 is no prediction
+            ## valid-observation indicator: 1 is valid and 0 is invalid or unrelated
             landsat_missing  = landsat_obs [:, :, 1] == FILL   #  shape: (N_valid, 176)
             sentinel_missing = sentinel_obs[:, :, 1] == FILL
             predict_doys = [int(date[:4]) - min_year + (int(date[4:]) - 1) / 366.0 for date in reconstructed_dates]
@@ -136,20 +140,28 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
                 # Init outputs in patch size
                 result_landsat  = np.full((height * width, len(predict_doys), n_out+1), FILL, dtype=np.float32)
                 result_sentinel = np.full((height * width, len(predict_doys), n_out+1), FILL, dtype=np.float32)
+                result_landsat[:, :, -1] = 0
+                result_sentinel[:, :, -1] = 0
                 result_landsat [valid_indices,:,:n_out] = extract_by_doy_optimized(landsat_obs [:, :, 0], landsat_obs [:, :, 1:BANDS_N], predict_doys)   # modified on 2/24/2026
                 result_sentinel[valid_indices,:,:n_out] = extract_by_doy_optimized(sentinel_obs[:, :, 0], sentinel_obs[:, :, 1:BANDS_N], predict_doys)
-                result_landsat [valid_indices,:,-1    ] = extract_by_doy_optimized(landsat_obs [:, :, 0], landsat_missing [:,:,np.newaxis], predict_doys)[:,:,0]
-                result_sentinel[valid_indices,:,-1    ] = extract_by_doy_optimized(sentinel_obs[:, :, 0], sentinel_missing[:,:,np.newaxis], predict_doys)[:,:,0]
-                
+                landsat_indicator = extract_by_doy_optimized(landsat_obs [:, :, 0], landsat_missing [:,:,np.newaxis], predict_doys)[:,:,0]
+                sentinel_indicator = extract_by_doy_optimized(sentinel_obs[:, :, 0], sentinel_missing[:,:,np.newaxis], predict_doys)[:,:,0]
+                result_landsat[valid_indices, :, -1] = np.where(landsat_indicator == FILL, 0, 1 - landsat_indicator)  # 1 is valid
+                result_sentinel[valid_indices, :, -1] = np.where(sentinel_indicator == FILL, 0, 1 - sentinel_indicator)
                 # Reshape to patch size and fit in the image
                 output_landsat [row_start:row_end, col_start:col_end, :, :] = result_landsat.reshape(height, width, len(predict_doys), n_out+1)
                 output_sentinel[row_start:row_end, col_start:col_end, :, :] = result_sentinel.reshape(height, width, len(predict_doys), n_out+1)
             elif TASK=="SOIL_MOISTURE": ## derive on the observed 
-                both_missing = np.logical_and(landsat_missing,sentinel_missing) 
+                both_missing = np.logical_and(landsat_missing,sentinel_missing)
+                has_observation = ~both_missing
                 result_landsat  = np.full((height * width, periods, n_out+1), FILL, dtype=np.float32)
+                result_landsat[:, :, -1] = 0
                 result_landsat [valid_indices,:, :1] =        predictions[:,:, :1]
                 result_landsat [valid_indices,:,1:2] = np.exp(predictions[:,:,1:2])
-                result_landsat [valid_indices,:,-1 ] = both_missing
+                valid_result = result_landsat[valid_indices]
+                valid_result[~has_observation, :2] = FILL # invalid pixels will be filled values
+                result_landsat[valid_indices] = valid_result
+                result_landsat[valid_indices, :, -1] = has_observation # 1 is valid, 0 is invalid
                 doy_index = np.isin(all_dates, used_dates)
                 # Reshape to patch size and fit in the image
                 output_landsat [row_start:row_end, col_start:col_end, doy_index, :] = result_landsat.reshape(height, width, periods, n_out+1)
@@ -159,10 +171,11 @@ def process_by_chunks(HLS_LIST, tile_id, IMG_WIDTH, IMG_HEIGHT, CHUNK_SIZE, BATC
                 both_missing = np.logical_and(landsat_missing,sentinel_missing) 
                 # Init outputs in patch size
                 result_landsat  = np.full((height * width, len(predict_doys), n_out+1), FILL, dtype=np.float32)
+                result_landsat[:, :, -1] = 0
                 result_landsat [valid_indices,:, :1] =        extract_by_doy_optimized(landsat_obs [:, :, 0], predictions[:,:, :1], predict_doys)*Y_SCALE+Y_OFFSET
                 result_landsat [valid_indices,:,1:2] = np.exp(extract_by_doy_optimized(landsat_obs [:, :, 0], predictions[:,:,1:2], predict_doys))*Y_SCALE
-                result_landsat [valid_indices,:,-1    ] = extract_by_doy_optimized(landsat_obs [:, :, 0], both_missing [:,:,np.newaxis], predict_doys)[:,:,0]
-                
+                valid_indicator = extract_by_doy_optimized(landsat_obs [:, :, 0], both_missing [:,:,np.newaxis], predict_doys)[:,:,0]
+                result_landsat[valid_indices, :, -1] = np.where(valid_indicator == FILL, 0, 1 - valid_indicator)
                 # Reshape to patch size and fit in the image
                 output_landsat [row_start:row_end, col_start:col_end, :, :] = result_landsat.reshape(height, width, len(predict_doys), n_out+1)
                 output_sentinel = output_landsat
