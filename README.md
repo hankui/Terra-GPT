@@ -12,7 +12,8 @@ All tasks are designed for HLS tiles over CONUS.
 
 ## 1.1 Updates
 
-✅ 2026-08-06: We prepared a small demo data for quick start. 
+2026-08-06: We prepared a small demo data for quick start. 
+2026-07-01: We uploaded first version. 
 
 ## 1.2 Notes Before Running
 
@@ -30,12 +31,6 @@ All tasks are designed for HLS tiles over CONUS.
 | SOIL_MOISTURE | THERMAL_DEM | `v4_5.SMmodel.B0256.r0.00001.e30.L0.10000.U064.i4.h5` |
 | CROP_MAPPING | THERMAL_DEM | `v3_9.layer4.METHOD2.BATCH128.LR0.0001.EPOCH20.L20.1.FT1.use_bt_dem.i0.model.h5` |
 | CROP_DAMAGE | THERMAL | `v5_0.layer4.METHOD2.BATCH2048.LR1e-06.EPOCH30.L20.1.FT1.i0.model 1.h5` |
-
-The input band configurations are:
-
-- `DEFAULT`: HLS reflectance bands only; no Landsat thermal bands and no topographic variables.
-- `THERMAL`: HLS reflectance bands plus Landsat thermal bands; no topographic variables.
-- `THERMAL_DEM`: HLS reflectance bands, Landsat thermal bands, DEM, slope, and aspect.
 
 For crop damage, the model was fine-tuned using growing-season time series from March 1 to dates within the growing season up to October 1.
 
@@ -96,7 +91,7 @@ The demo data HLS data have only 128×128 30 m pixels in each tif file. This is 
 
 Download the models located in https://zenodo.org/records/21810783 to local computers and change the `MODEL_PATHS` variable in the `config.py` file to reflect the model path users put in their local computer.
 
-### (2) Terra-GPT codes and small demo data are included in the zip file; they can also be downloaded from:
+### (2) Terra-GPT codes and small demo data can be downloaded from:
 
 Codes: https://github.com/hankui/Terra-GPT
 
